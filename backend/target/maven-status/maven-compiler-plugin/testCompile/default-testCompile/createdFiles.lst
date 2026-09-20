@@ -1,0 +1,3 @@
+com/ticketmanagement/service/TicketServiceTest.class
+com/ticketmanagement/logging/TicketEventLoggerTest.class
+com/ticketmanagement/service/TicketStatusMachineTest.class

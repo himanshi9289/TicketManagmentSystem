@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.ticketmanagement.service.TicketServiceTest
+-------------------------------------------------------------------------------
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.237 s -- in com.ticketmanagement.service.TicketServiceTest
