@@ -43,12 +43,10 @@ class TicketEventLoggerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("x-amz-cf-id", "edge-123");
         TicketEventLogger eventLogger = new TicketEventLogger(objectMapper, request);
-
         eventLogger.initEvent(TicketEventType.STATUS_CHANGED, 7L);
         eventLogger.set("oldStatus", "OPEN");
         eventLogger.set("newStatus", "IN_PROGRESS");
         eventLogger.logSuccess();
-
         JsonNode json = onlyJson(Level.INFO);
         assertEquals("edge-123", json.get("requestId").asText());
         assertEquals("STATUS_CHANGED", json.get("eventName").asText());
