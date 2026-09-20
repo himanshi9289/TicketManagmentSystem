@@ -1,0 +1,342 @@
+openapi: 3.0.3
+info:
+  title: Support Ticket Management API
+  version: 1.0.0
+  description: |
+    Versioned ticket API for the support workspace. No authentication.
+    Status changes are accepted or rejected by the service-layer state machine.
+    Error bodies use only the five fields required by the project constitution.
+servers:
+  - url: /api/v1
+tags:
+  - name: tickets
+paths:
+  /tickets:
+    get:
+      tags: [tickets]
+      summary: List tickets
+      description: |
+        Returns every ticket matching the optional keyword and status filter,
+        most recently updated first. An empty result is 200 with an empty array.
+      parameters:
+        - $ref: '#/components/parameters/keyword'
+        - $ref: '#/components/parameters/status'
+      responses:
+        '200':
+          description: Matching tickets. Empty array when nothing matches.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketSummary'
+        '400':
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [tickets]
+      summary: Create a ticket
+      description: Status is always OPEN. The body must not set status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketRequest'
+      responses:
+        '201':
+          description: Ticket created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketDetail'
+        '400':
+          $ref: '#/components/responses/Error'
+  /tickets/{id}:
+    get:
+      tags: [tickets]
+      summary: Get ticket details
+      description: Comments are ordered oldest first.
+      parameters:
+        - $ref: '#/components/parameters/ticketId'
+      responses:
+        '200':
+          description: Ticket and its comments.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketDetail'
+        '404':
+          $ref: '#/components/responses/Error'
+    patch:
+      tags: [tickets]
+      summary: Update ticket details
+      description: |
+        Updates title, description, priority, or assignee. Does not change status.
+        Omitted fields stay as they are. A JSON null assignee clears the assignee.
+        Rejected when the ticket is CLOSED or CANCELLED; the stored ticket is unchanged.
+      parameters:
+        - $ref: '#/components/parameters/ticketId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketRequest'
+      responses:
+        '200':
+          description: Updated ticket.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketDetail'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /tickets/{id}/status:
+    patch:
+      tags: [tickets]
+      summary: Change ticket status
+      description: |
+        The controller forwards the requested status. The service-layer state
+        machine allows only OPEN to IN_PROGRESS, OPEN to CANCELLED, IN_PROGRESS
+        to RESOLVED, IN_PROGRESS to CANCELLED, and RESOLVED to CLOSED.
+        The same status returns 200 and does not change the ticket.
+        Any other change returns 400 and does not change the ticket.
+      parameters:
+        - $ref: '#/components/parameters/ticketId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusRequest'
+      responses:
+        '200':
+          description: Ticket after a successful change, or unchanged if the status was already the requested one.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketDetail'
+        '400':
+          description: Illegal transition or invalid status value. Body message names the current status, the requested status, and states that the ticket was not changed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          $ref: '#/components/responses/Error'
+  /tickets/{id}/comments:
+    post:
+      tags: [tickets]
+      summary: Add a comment
+      description: |
+        Allowed when the ticket is OPEN, IN_PROGRESS, or RESOLVED.
+        Rejected for CLOSED and CANCELLED. Also refreshes the ticket updated time
+        so the ticket rises in the list.
+      parameters:
+        - $ref: '#/components/parameters/ticketId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '201':
+          description: Comment stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+components:
+  parameters:
+    ticketId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    keyword:
+      name: keyword
+      in: query
+      required: false
+      description: Case-insensitive substring of title, description, or comment text. Percent and underscore are literal. Blank is treated as omitted.
+      schema:
+        type: string
+        maxLength: 200
+    status:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/TicketStatus'
+  responses:
+    Error:
+      description: Standard error body. No other properties are allowed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    TicketStatus:
+      type: string
+      enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED]
+    TicketPriority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, CRITICAL]
+    CreateTicketRequest:
+      type: object
+      additionalProperties: false
+      required: [title, description, priority]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        priority:
+          $ref: '#/components/schemas/TicketPriority'
+        assignee:
+          type: string
+          nullable: true
+          maxLength: 80
+          description: Omit or send null for unassigned. Spaces are stored as unassigned.
+    UpdateTicketRequest:
+      type: object
+      additionalProperties: false
+      description: At least one of title, description, priority, or assignee must be present.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        priority:
+          $ref: '#/components/schemas/TicketPriority'
+        assignee:
+          type: string
+          nullable: true
+          maxLength: 80
+          description: Null clears the assignee. Omit to leave it unchanged.
+    UpdateStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+    CreateCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [authorName, text]
+      properties:
+        authorName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    TicketSummary:
+      type: object
+      additionalProperties: false
+      required: [id, title, status, priority, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        priority:
+          $ref: '#/components/schemas/TicketPriority'
+        assignee:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+    Comment:
+      type: object
+      additionalProperties: false
+      required: [id, authorName, text, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        authorName:
+          type: string
+        text:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    TicketDetail:
+      type: object
+      additionalProperties: false
+      required: [id, title, description, priority, status, createdAt, updatedAt, comments]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: User-visible ticket reference.
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          $ref: '#/components/schemas/TicketPriority'
+        assignee:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [timestamp, status, error, message, path]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error was produced, ISO-8601.
+        status:
+          type: integer
+          description: HTTP status code.
+        error:
+          type: string
+          description: HTTP reason phrase, such as Bad Request or Not Found.
+        message:
+          type: string
+          description: |
+            Safe for the UI. Names the broken field or the illegal status change.
+            Validation failures use "field: reason" segments joined by "; ".
+            Must not contain a stack trace, SQL, or a Java class name.
+        path:
+          type: string
+          description: Request path that failed, beginning with /api/v1.
