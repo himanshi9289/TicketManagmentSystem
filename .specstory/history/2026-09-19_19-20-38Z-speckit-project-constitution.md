@@ -9544,10 +9544,26 @@ The `crossOrigin` attribute on the preconnect link to fonts.gstatic.com is set t
 
 _**Agent (auto-smart)**_
 
+<think><details><summary>Thought Process</summary>
+Verifying the invalid `crossOrigin=""` attribute on the Google Fonts preconnect link. It should be `"anonymous"` or omitted entirely.
+
+Reading the file to apply the fix.
+</details></think>
+
+_**Agent (auto-smart)**_
+
 <tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
-<summary>Tool use: **read_file_v2** • Read file: </summary>
+<summary>Tool use: **read_file_v2** • Read file: /home/himanshisharma/Documents/TicketManagmentSystem/frontend/src/app/layout.tsx</summary>
 
 </details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The layout.tsx file appears unexpectedly empty.
+
+Checking whether the file exists and examining the frontend.
+</details></think>
 
 _**Agent (auto-smart)**_
 
@@ -9556,4 +9572,127 @@ _**Agent (auto-smart)**_
 ```bash
 ls -la frontend/src/app/; wc -c frontend/src/app/layout.tsx; find frontend -name 'layout.tsx' -o -name '*.tsx' | head -30; rg -n 'crossOrigin|fonts.gstatic' frontend || true
 ```
+
+```
+total 32
+drwxrwxr-x 3 root root 4096 Sep 20 23:40 .
+drwxrwxr-x 5 root root 4096 Sep 20 23:40 ..
+-rw-rw-r-- 1 root root 4224 Sep 20 23:40 globals.css
+-rw-rw-r-- 1 root root  770 Sep 20 23:40 layout.tsx
+-rw-rw-r-- 1 root root 5002 Sep 20 23:40 page.tsx
+drwxrwxr-x 4 root root 4096 Sep 20 23:41 tickets
+770 frontend/src/app/layout.tsx
+frontend/src/components/ApiErrorMessage.tsx
+frontend/src/app/page.tsx
+frontend/src/app/tickets/new/page.tsx
+frontend/src/app/tickets/[id]/page.tsx
+frontend/src/app/layout.tsx
+frontend/src/app/layout.tsx:15:        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+
+```
 </details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The Read tool returned empty despite the file containing content.
+
+Using shell to retrieve the file content for the fix.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2"><details>
+<summary>Tool use: **run_terminal_command_v2** • Run command: cat frontend/src/app/layout.tsx</summary>
+```bash
+cat frontend/src/app/layout.tsx
+```
+
+```
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Support Ticket Management",
+  description: "Create, track, and resolve support tickets",
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+```
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Confirmed the issue. The fix replaces `crossOrigin=""` with `crossOrigin="anonymous"`.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2**</summary>
+The string to replace was not found in the file.
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The Read/StrReplace tools appear to be having trouble with this file, possibly due to a cursorignore issue.
+
+Trying to write the full file contents directly via shell or the Write tool.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /home/himanshisharma/Documents/TicketManagmentSystem/frontend/src/app/layout.tsx</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Verifying the fix was applied.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2"><details>
+<summary>Tool use: **run_terminal_command_v2** • Run command: rg -n &#39;crossOrigin&#39; frontend/src/app/layout.tsx</summary>
+```bash
+rg -n 'crossOrigin' frontend/src/app/layout.tsx
+```
+
+```
+15:        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+
+```
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The invalid `crossOrigin=""` attribute on the Google Fonts preconnect link has been fixed.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+Confirmed in `frontend/src/app/layout.tsx`: the fonts.gstatic.com preconnect used `crossOrigin=""`.
+
+Updated it to `crossOrigin="anonymous"` so the CORS preconnect matches what Google Fonts expects.
